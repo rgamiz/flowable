@@ -1,0 +1,59 @@
+version: "3"
+
+services:
+    flowable_mysql:
+        image: mysql:8.0.36
+        environment:
+            - MYSQL_ROOT_PASSWORD=1234 
+            - MYSQL_DATABASE=flowable 
+            - MYSQL_USER=flowable 
+            - MYSQL_PASSWORD=flowable
+        ports:
+          - 3306:3306      
+        command: mysqld --lower_case_table_names=1 --skip-ssl --character_set_server=utf8
+
+    loan-manager:
+        build:
+          context: ./loan-manager
+          args:
+            JAR_FILE: loan-manager-0.0.1-SNAPSHOT.jar
+        depends_on:
+          - flowable_mysql
+        environment:
+          spring.datasource.url: jdbc:mysql://flowable_mysql:3306/flowable?seUnicode=true&characterEncoding=UTF-8&allowPublicKeyRetrieval=true&useSSL=false
+          spring.datasource.username: flowable
+          spring.datasource.password: flowable
+          spring.datasource.driver-class-name: com.mysql.cj.jdbc.Driver                        
+        ports:
+          - 8180:8180 
+
+    loans_backend_postgres:
+        image: postgres:latest
+        environment:
+            - POSTGRES_PASSWORD=postgres
+            - POSTGRES_USER=postgres
+            - POSTGRES_DB=loansbackend
+        command: "
+            postgres
+              -c max_connections=200
+              -c logging_collector=on
+              -c log_min_messages=LOG
+              -c log_directory=/var/log/postgresql"
+        ports:
+            - 5432:5432
+
+    loan-backend:
+        build:
+          context: ./loan-backend
+          args:
+            JAR_FILE: loan-backend-0.0.1-SNAPSHOT.jar
+        depends_on:
+          - loans_backend_postgres
+        environment:
+          spring.datasource.url: jdbc:postgresql://loans_backend_postgres:5432/loansbackend
+          spring.datasource.username: postgres
+          spring.datasource.password: postgres
+          spring.datasource.driver-class-name: org.postgresql.Driver
+        ports:
+          - 8280:8280             
+         
